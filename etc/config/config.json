@@ -1,0 +1,16 @@
+{
+  "addr": "127.0.0.59",
+  "dns": "1.1.1.1",
+  "split-tunnel": {
+    "domains": [
+      "*.example.org.",
+      "*.example.com.",
+      "*.example.net."
+    ],
+    "dns": "9.9.9.9",
+    "netlink": {
+      "enabled": true,
+      "dev": "tun0"
+    }
+  }
+}

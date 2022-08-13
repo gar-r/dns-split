@@ -1,0 +1,9 @@
+[Unit]
+Description=dns-split proxy server
+
+[Service]
+Restart=always
+ExecStart=/usr/local/bin/dns-split
+
+[Install]
+WantedBy=multi-user.target
