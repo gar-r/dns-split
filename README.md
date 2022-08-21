@@ -179,6 +179,26 @@ Note, that the port __must__ be set to `53`, and need to be defined in `/etc/res
 nameserver 127.0.0.59
 ```
 
+### preventing openconnect/vpnc-script to change default DNS
+
+The default vpnc script will temporarily change your default DNS server to route DNS queries through the VPN DNS server.
+
+To prevent this, you can use the included `vpnc-script-no-dns.sh`. The script is installed into the `/etc/dns-split` directory by default.
+
+```
+#!/bin/sh
+unset INTERNAL_IP4_DNS
+
+VPNC_SCRIPT="/etc/vpnc/vpnc-script"
+. $VPNC_SCRIPT
+```
+
+Use the above script with `openconnect`:
+
+```
+openconnect --script "/etc/dns-split/vpnc-script-no-dns.sh"
+```
+
 ### configure split dns
 
 Edit the `/etc/dns-split/config.json` file:
@@ -188,7 +208,6 @@ Edit the `/etc/dns-split/config.json` file:
      * specify the vpn dns server
      * specify the domains that need to be routed through the vpn (the usual `*.` wildcard can be used inside domains)
      * enable the netlink hook if needed, and specify the vpn network interface
-
 
 
 ### a note on caching
