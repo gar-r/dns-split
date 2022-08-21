@@ -85,6 +85,8 @@ An example configuration is included in `etc/config` and is copied to `/etc/dns-
 }
 ```
 
+_Note: the trailing "`.`" characters in the domain names is not a mistake, make sure you end your domains with "`.`" as well, otherwise they will not match!_
+
 The configuration file is a simple json document, and the following options can be used in it:
 
 | Attribute      | Description                                     | Type   |
@@ -206,7 +208,9 @@ Edit the `/etc/dns-split/config.json` file:
    * specify the default dns server
    * in the split-tunnel section:
      * specify the vpn dns server
-     * specify the domains that need to be routed through the vpn (the usual `*.` wildcard can be used inside domains)
+     * specify the domains that need to be routed through the vpn:
+       * use trailing `.` characters in the domains (see example above)
+       * the usual `*.` wildcard can be used inside domains
      * enable the netlink hook if needed, and specify the vpn network interface
 
 

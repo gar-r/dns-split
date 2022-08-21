@@ -5,3 +5,6 @@
 # binaries
 dns-split
 dns-split.exe
+
+# dev config
+etc/config/config-dev.json
