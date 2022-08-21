@@ -1,8 +1,10 @@
 # dns-split
 
-This is a simple dns proxy service, capable of routing DNS queries to different DNS servers based on configuration.
-It is also able to call a custom defined script hook after DNS lookups, which is especially useful for split-dns
-tunneling setup with `openvpn` (for example: global protect protocol's `<include-split-tunneling-domain>`).
+This is a simple dns proxy service, capable of routing DNS queries to two different DNS servers based on configuration.
+
+## why?
+
+While `dns-split` could be used in itself as a local DNS server, the main intent of it is to use it with a split-tunneling vpn setup, for example global protect  `<include-split-tunneling-domain>`.
 
 ## install
 
@@ -16,8 +18,15 @@ This will install the following:
 
 * binary (`/usr/local/bin`)
 * default configuration (`/etc/dns-split/config.json`)
-* example scripts (`/etc/dns-split/scripts`)
 * systemd service (`/etc/systemd/system/dns-split.service`)
+
+## upgrade
+
+To upgrade from an older version, use the `upgrade` make target. This will only update the binary and leave your config file and systemd service definition intact:
+
+```
+sudo make upgrade
+```
 
 ## uninstall
 
@@ -44,166 +53,144 @@ systemctl status dns-split.service
 
 ## command line args
 
-The DNS proxy will start on the default address `127.0.0.59:53` and use the default config `/etc/dns-split/config.json`. 
-The default options can be overridden with the following args:
+The DNS proxy will start on the default address `127.0.0.59:53` and use the default config `/etc/dns-split/config.json`.
 
-| Command Line Arg | Description               | Default Value                     |
-|------------------|---------------------------|-----------------------------------|
-| `--addr`         | the address to start on   | 127.0.0.59:53                     |
-| `--config`       | location of `config.json` | /etc/dns-split/config.json |
-| `--cache`        | enable caching            | true                              |
+The following command line args can be used:
 
-## set as default dns
+| Command Line Arg | Description                        | Default Value              |
+| ---------------- | ---------------------------------- | -------------------------- |
+| `--config`       | location of the `config.json` file | /etc/dns-split/config.json |
+| `--verbose`      | enable verbose logging             | false                      |
 
-### using resolved (recommended)
+## configuration
 
-In `/etc/resolv.conf` the default nameserver should be set to the address of dns-split.
-With this approach it is not possible to change the port of the DNS proxy.
+An example configuration is included in `etc/config` and is copied to `/etc/dns-split/config.json` during install.
+
+```json
+{
+  "addr": "127.0.0.59",
+  "dns": "1.1.1.1",
+  "split-tunnel": {
+    "domains": [
+      "*.example.org.",
+      "*.example.com.",
+      "*.example.net."
+    ],
+    "dns": "9.9.9.9",
+    "netlink": {
+      "enabled": true,
+      "dev": "tun0"
+    }
+  }
+}
+```
+
+The configuration file is a simple json document, and the following options can be used in it:
+
+| Attribute      | Description                                     | Type   |
+| -------------- | ----------------------------------------------- | ------ |
+| `addr`         | the address to start `dns-split` server on      | string |
+| `dns`          | the default DNS server to proxy requests to     | string |
+| `split-tunnel` | an object containing split-tunnel configuration | object |
+
+The `split-tunnel` object contains the following fields:
+
+| Attribute | Description                                                                                          | Type             |
+| --------- | ---------------------------------------------------------------------------------------------------- | ---------------- |
+| `domains` | a list of domain patterns                                                                            | array of strings |
+| `dns`     | the DNS server to proxy to if the host name matches any of the patterns from the domains array above | string           |
+| `netlink` | an optional netlink configuration object                                                             | object           |
+
+
+The `netlink` object contains the following fields:
+
+| Attribute | Description                                       | Type    |
+| --------- | ------------------------------------------------- | ------- |
+| `enabled` | a value indicating if the netlink hook is enabled | boolean |
+| `dev`     | the network device name to set ip links on        | string  |
+
+
+
+## configuring for vpn split-dns usage
+
+A working DNS split tunnel setup will revolve around the following:
+
+* dns-split is configured as your default local DNS server
+* configuration:
+    - the default DNS server is set to a real remote DNS server
+    - the split-tunnel DNS server is set to the vpn DNS server
+    - a set of domains that need to be routed through the vpn
+    - (optionally) enabled netlink and vpn network device specified
+
+
+The workflow will look like this:
+
+1. a dns query arrives
+2. the query is routed to dns-split
+3. dns-split cross-references the hostname with its domain patterns
+4. if no match:
+   1. the query is forwarded to the default DNS server
+   2. the response is proxied back to the caller
+5. if there is a match:
+   1. the query is forwarded to the split-tunnel DNS server
+   2. when it responds, the netlink hook is invoked (if enabled), setting up ip routes on the kernel to the VPN network device using the resolved ip address
+   3. the response is proxied back to the caller
+
+
+### about the netlink hook
+
+This hook is especially useful for global protect `<include-split-tunneling-domain>` when using `openconnect`. In this scenario the VPN server will send a list of domains (including wildcards) that should be routed through the VPN network interface.
+
+If the domain list actually contains wildcards, `openconnect`'s `vpnc` script will not be sufficient to properly configure the VPN, since the name of the hosts is not known in advance (foo.corporate.com, bar.corporate.com, etc.)
+
+If your VPN is not relying on domain wildcards, the netlink option can safely be disabled.
+
+
+### a note on systemd-resolved
+
+Currently `dns-split` is not confirmed to work with systemd-resolve, and most likely you would face issues because of systemd stub resolver's cache and your split-dns netlink hooks not being triggered.
+
+To disable systemd-resolved:
 
 ```
-nameserver 127.0.0.59
+sudo systemctl disable --now systemd-resolved.service
 ```
+
+If systemd-resolved is running in stub mode, remove the symlink as well:
+
+```
+sudo rm -f /etc/resolv.conf
+```
+
+After this, proceed with the standard setup as below.
+
+### using glibc resolver
 
 Make sure, that:
 
    * `systemd-resolved` is __not__ enabled/running
    * `/etc/resolv.conf` is __not__ a symlink to a `systemd-resolved` stub
 
-### using systemd-resolve
 
-Add the folowing to `/etc/systemd/resolved.conf.d/dns_servers.conf`:
-
-```
-[Resolve]
-DNS=127.0.0.59
-Domains=~.
-```
-
-Start `systemd-resolved` in stub mode:
+Edit `/etc/resolv.conf`, and set the default nameserver to the address of dns-split.
+Note, that the port __must__ be set to `53`, and need to be defined in `/etc/resolv.conf` using this approach.
 
 ```
-ln -rsf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
-systemctl enable --now systemd-resolved.service
+nameserver 127.0.0.59
 ```
 
-Ensure the config is picked up:
+### configure split dns
 
-```
-resolvectl status
-```
+Edit the `/etc/dns-split/config.json` file:
+
+   * specify the default dns server
+   * in the split-tunnel section:
+     * specify the vpn dns server
+     * specify the domains that need to be routed through the vpn (the usual `*.` wildcard can be used inside domains)
+     * enable the netlink hook if needed, and specify the vpn network interface
 
 
-## configure split dns
 
-Edit the `config.json` file to add dns servers to proxy to.
+### a note on caching
 
-Restrictions:
-
-* there must be __exactly__ one server with `default` set to `true`
-* a domain pattern should only appear __exactly__ once across all server nodes (multiple subdomain patterns for the same
-  domain are OK)
-* for each server specifying the address is mandatory
-
-Schema:
-
-* config (`[]Server`)
-
-* server
-    - addr (`string`)
-    - default (`boolean`)
-    - script (`string`)
-    - domains (`[]string`)
-
-Example:
-
-```json
-{
-  "servers": [
-    {
-      "addr": "1.1.1.1",
-      "default": true
-    },
-    {
-      "addr": "8.8.8.8",
-      "script": "/etc/dns-split/scripts/example.sh",
-      "domains": [
-        "~example.com",
-        "*.foo.example.org",
-        "*.bar.example.org"
-      ]
-    }
-  ]
-}
-```
-
-## domain wildcards
-
-The following wildcards can be used inside domain strings:
-
-| Wildcard    | Description                                               |
-| ----------- | --------------------------------------------------------- |
-| `*.foo.com` | matches all subdomains of foo.com, but not foo.com itself |
-| `~foo.com`  | matches foo.com and all subdomains                        |
-
-## implementing dns split tunnel for openconnect vpn
-
-DNS split tunnel will revolve around the following setup:
-
-* dns-split is configured as your default local DNS
-* server configuration:
-    - default (real) DNS server
-    - vpn DNS with the required domain patterns and a script hook
-    - a special script that sets ip routes
-
-The workflow will look like this:
-
-__VPN domain:__
-
-1. dns request comes in
-2. query is routed to VPN DNS server
-3. VPN DNS server responds with IP address
-4. script hook is invoked with IP
-5. script adds kernel ip route
-
-__Normal domain:__
-
-1. dns request comes in
-2. query is routed to default DNS server
-3. DNS server responds with IP address
-
-The config for the VPN domains should look similar to this:
-
-```json
-{
-  "servers": [
-    {    },
-    {
-      "addr": "<ip of vpn dns>",
-      "script": "/etc/dns-split/scripts/add-route.sh",
-      "domains": [
-        "~example.com"
-      ]
-    }
-  ]
-}
-```
-
-The script is invoked right after the ip address is resolved, thus can hook into DNS resolution to set kernel ip routes:
-
-```sh
-$(ip route add $IP via 0.0.0.0 dev tun0)
-```
-
-...where `tun0` is the VPN interface name.
-
-The script will get the required parameters as environment variables:
-
-| Environment Variable | Description             |
-| -------------------- | ----------------------- |
-| $HOST_NAME           | the host queried        |
-| $IP                  | the resolved ip address |
-
-### note on caching
-
-If caching is enabled and a query hits the cache the script hook is _not_ invoked.
-This is working as intended: since the ip route has already been added and the IP did not change (cache hit) there is no need to call the hook either.
+It's easy to see, that if dns-split is put behind another DNS proxy that handles caching, the netlink hook might not get properly invoked (especially if the cache is persisted between restarts). This is one reason why integration with systemd-resolved is currently not supported.
