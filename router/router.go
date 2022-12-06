@@ -14,17 +14,32 @@ type Router struct {
 
 func (r *Router) Route(hostname string) string {
 	server := r.Config.Dns
-	for _, domain := range r.Config.Tunnel.Domains {
-		if matchDomain(hostname, domain) {
-			server = r.Config.Tunnel.Dns
-			break
-		}
+	if !r.isExcluded(hostname) && r.isTunneled(hostname) {
+		server = r.Config.Tunnel.Dns
 	}
 	log.Info().
 		Str("hostname", hostname).
 		Str("server", server).
 		Msg("routing")
 	return server
+}
+
+func (r *Router) isExcluded(hostname string) bool {
+	for _, domain := range r.Config.Tunnel.Exclude {
+		if matchDomain(hostname, domain) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Router) isTunneled(hostname string) bool {
+	for _, domain := range r.Config.Tunnel.Domains {
+		if matchDomain(hostname, domain) {
+			return true
+		}
+	}
+	return false
 }
 
 var domainRe = regexp.MustCompile(`^(\*\.|)([\w.-]+)$`)

@@ -7,6 +7,9 @@
       "*.example.com.",
       "*.example.net."
     ],
+    "exclude": [
+      "*.foo.example.com."
+    ],
     "dns": "9.9.9.9",
     "netlink": {
       "enabled": true,

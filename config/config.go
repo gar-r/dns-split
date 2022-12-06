@@ -9,6 +9,7 @@ type Config struct {
 type TunnelConfig struct {
 	Dns     string         `json:"dns"`
 	Domains []string       `json:"domains"`
+	Exclude []string       `json:"exclude"`
 	Netlink *NetlinkConfig `json:"netlink"`
 }
 

@@ -76,6 +76,9 @@ An example configuration is included in `etc/config` and is copied to `/etc/dns-
       "*.example.com.",
       "*.example.net."
     ],
+    "exclude": [
+      "*.foo.example.com."
+    ],
     "dns": "9.9.9.9",
     "netlink": {
       "enabled": true,
@@ -100,6 +103,7 @@ The `split-tunnel` object contains the following fields:
 | Attribute | Description                                                                                          | Type             |
 | --------- | ---------------------------------------------------------------------------------------------------- | ---------------- |
 | `domains` | a list of domain patterns                                                                            | array of strings |
+| `exclude` | a list of domain patterns to exclude from proxying                                                   | array of strings |
 | `dns`     | the DNS server to proxy to if the host name matches any of the patterns from the domains array above | string           |
 | `netlink` | an optional netlink configuration object                                                             | object           |
 
@@ -208,6 +212,7 @@ Edit the `/etc/dns-split/config.json` file:
    * specify the default dns server
    * in the split-tunnel section:
      * specify the vpn dns server
+     * specify excluded domains (if any)
      * specify the domains that need to be routed through the vpn:
        * use trailing `.` characters in the domains (see example above)
        * the usual `*.` wildcard can be used inside domains
