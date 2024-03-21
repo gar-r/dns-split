@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"git.okki.hu/garric/dns-split/config"
+	"github.com/gar-r/dns-split/config"
 	"github.com/rs/zerolog/log"
 )
 

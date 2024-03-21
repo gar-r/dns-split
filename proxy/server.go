@@ -1,9 +1,9 @@
 package proxy
 
 import (
-	"git.okki.hu/garric/dns-split/config"
-	"git.okki.hu/garric/dns-split/hook"
-	"git.okki.hu/garric/dns-split/router"
+	"github.com/gar-r/dns-split/config"
+	"github.com/gar-r/dns-split/hook"
+	"github.com/gar-r/dns-split/router"
 
 	"github.com/miekg/dns"
 	"github.com/rs/zerolog/log"

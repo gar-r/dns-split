@@ -3,7 +3,7 @@ package hook
 import (
 	"net"
 
-	"git.okki.hu/garric/dns-split/config"
+	"github.com/gar-r/dns-split/config"
 	"github.com/miekg/dns"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

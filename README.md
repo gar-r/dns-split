@@ -9,7 +9,7 @@ While `dns-split` could be used in itself as a local DNS server, the main intent
 ## install
 
 ```
-git clone https://git.okki.hu/garric/dns-split.git
+git clone https://github.com/gar-r/dns-split.git
 cd dns-split
 sudo make clean install
 ```

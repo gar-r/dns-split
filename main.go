@@ -6,9 +6,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"git.okki.hu/garric/dns-split/config"
-	"git.okki.hu/garric/dns-split/proxy"
-	"git.okki.hu/garric/dns-split/router"
+	"github.com/gar-r/dns-split/config"
+	"github.com/gar-r/dns-split/proxy"
+	"github.com/gar-r/dns-split/router"
 )
 
 func main() {
